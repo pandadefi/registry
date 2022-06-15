@@ -119,13 +119,15 @@ def initialize(gov, release_registry, vault_registry, legacy_registry, vaults):
     for version in VERSIONS:
         try:
             vault_registry.batchEndorseVault(
-                vaultsAddresses[version], deltas[version], sender=gov
+                vaultsAddresses[version], deltas[version], 0, sender=gov
             )
         except Exception as e:
             print("FAIL: ", vaultsAddresses[version])
             for v in vaultsAddresses[version]:
                 try:
-                    vault_registry.batchEndorseVault([v], deltas[version], sender=gov)
+                    vault_registry.batchEndorseVault(
+                        [v], deltas[version], 0, sender=gov
+                    )
                 except Exception as e:
                     print(v["id"])
                     v = Contract(Web3.toChecksumAddress(v))

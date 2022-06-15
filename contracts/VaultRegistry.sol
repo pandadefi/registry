@@ -22,13 +22,17 @@ interface IReleaseRegistry {
 }
 
 contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
+    enum VaultType {
+        DEFAULT,
+        FIXED_TERM,
+        EXPERIMENTAL
+    } // Could be replaced by a uint.
+
     address public releaseRegistry;
-    // Token => len(vaults)
-    mapping(address => uint256) public numVaults;
-    mapping(address => mapping(uint256 => address)) public vaults;
+    // token => type => number => address
+    mapping(address => mapping(VaultType => address[])) public vaults;
     // Index of token added => token address
-    mapping(uint256 => address) public tokens;
-    uint256 public numTokens;
+    address[] public tokens;
     // Inclusion check for token
     mapping(address => bool) public isRegistered;
     mapping(address => bool) public approvedVaultsOwner;
@@ -45,12 +49,6 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     event NewVault(
         address indexed token,
         uint256 indexed vaultId,
-        address vault,
-        string apiVersion
-    );
-    event NewExperimentalVault(
-        address indexed token,
-        address indexed deployer,
         address vault,
         string apiVersion
     );
@@ -72,6 +70,21 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         require(msg.sender == owner(), "not allowed");
     }
 
+    function numTokens() external returns (uint256) {
+        return tokens.length;
+    }
+
+    function numVaults(address _token) external returns (uint256) {
+        return vaults[_token][VaultType.DEFAULT].length;
+    }
+
+    function numVaults(address _token, VaultType _type)
+        external
+        returns (uint256)
+    {
+        return vaults[_token][_type].length;
+    }
+
     /**
      @notice Returns the latest deployed vault for the given token.
      @dev Throws if no vaults are endorsed yet for the given token.
@@ -80,37 +93,58 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
      NOTE: Throws if there has not been a deployed vault yet for this token
      */
     function latestVault(address _token) external view returns (address) {
-        return vaults[_token][numVaults[_token] - 1]; // dev: no vault for token
+        address[] memory tokenVaults = vaults[_token][VaultType.DEFAULT]; // dev: no vault for token
+        return tokenVaults[tokenVaults.length - 1]; // dev: no vault for token
     }
 
-    function _registerVault(address _token, address _vault) internal {
+    /**
+     @notice Returns the latest deployed vault for the given token.
+     @dev Throws if no vaults are endorsed yet for the given token.
+     @param _token The token address to find the latest vault for.
+     @return The address of the latest vault for the given token.
+     NOTE: Throws if there has not been a deployed vault yet for this token
+     */
+    function latestVault(address _token, VaultType _type)
+        external
+        view
+        returns (address)
+    {
+        address[] memory tokenVaults = vaults[_token][_type];
+        return tokenVaults[tokenVaults.length - 1]; // dev: no vault for token
+    }
+
+    function _registerVault(
+        address _token,
+        address _vault,
+        VaultType _type
+    ) internal {
         // Check if there is an existing deployment for this token at the particular api version
         // NOTE: This doesn't check for strict semver-style linearly increasing release versions
-        uint256 vaultId = numVaults[_token]; // Next id in series
-        if (vaultId > 0) {
+        uint256 nVaults = vaults[_token][_type].length; // Next id in series
+        if (nVaults > 0) {
             if (
                 keccak256(
-                    bytes(IVault(vaults[_token][vaultId - 1]).apiVersion())
+                    bytes(
+                        IVault(vaults[_token][_type][nVaults - 1]).apiVersion()
+                    )
                 ) == keccak256(bytes(IVault(_vault).apiVersion()))
             ) {
                 revert EndorseVaultWithSameVersion(
-                    vaults[_token][vaultId - 1],
+                    vaults[_token][_type][nVaults - 1],
                     _vault
                 );
             }
         }
 
         // Update the latest deployment
-        vaults[_token][vaultId] = _vault;
-        numVaults[_token] = vaultId + 1;
+        vaults[_token][_type].push(_vault);
 
         // Register tokens for endorsed vaults
         if (isRegistered[_token] == false) {
             isRegistered[_token] = true;
-            tokens[numTokens] = _token;
-            numTokens += 1;
+            tokens.push(_token);
         }
-        emit NewVault(_token, vaultId, _vault, IVault(_vault).apiVersion());
+        emit NewVault(_token, nVaults, _vault, IVault(_vault).apiVersion());
     }
 
     /**
@@ -127,7 +161,11 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
      @param _vault The vault that will be endorsed by the Registry.
      @param _releaseDelta Specify the number of releases prior to the latest to use as a target. Default is latest.
     */
-    function endorseVault(address _vault, uint256 _releaseDelta) public {
+    function endorseVault(
+        address _vault,
+        uint256 _releaseDelta,
+        VaultType _type
+    ) public {
         require(vaultEndorsers[msg.sender], "unauthorized");
         if (approvedVaultsOwner[IVault(_vault).governance()] == false) {
             revert GovernanceMismatch(_vault);
@@ -148,11 +186,11 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
             revert VersionMissmatch(IVault(_vault).apiVersion(), apiVersion);
         }
         // Add to the end of the list of vaults for token
-        _registerVault(IVault(_vault).token(), _vault);
+        _registerVault(IVault(_vault).token(), _vault, _type);
     }
 
     function endorseVault(address _vault) external {
-        endorseVault(_vault, 0);
+        endorseVault(_vault, 0, VaultType.DEFAULT);
     }
 
     /**
@@ -172,7 +210,8 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     */
     function batchEndorseVault(
         address[] calldata _vaults,
-        uint256 _releaseDelta
+        uint256 _releaseDelta,
+        VaultType _type
     ) external onlyOwner {
         uint256 releaseTarget = IReleaseRegistry(releaseRegistry)
             .numReleases() -
@@ -195,7 +234,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
             ) {
                 revert VersionMissmatch(IVault(vault).apiVersion(), apiVersion);
             }
-            _registerVault(IVault(vault).token(), vault);
+            _registerVault(IVault(vault).token(), vault, _type);
         }
     }
 
@@ -215,7 +254,8 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
                 _rewards,
                 _name,
                 _symbol,
-                _releaseDelta
+                _releaseDelta,
+                VaultType.DEFAULT
             );
     }
 
@@ -245,7 +285,8 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         address _rewards,
         string calldata _name,
         string calldata _symbol,
-        uint256 _releaseDelta
+        uint256 _releaseDelta,
+        VaultType _type
     ) public returns (address) {
         require(vaultEndorsers[msg.sender], "unauthorized");
         require(approvedVaultsOwner[_governance], "not allowed vault owner");
@@ -258,7 +299,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
             _symbol,
             _releaseDelta
         );
-        _registerVault(_token, vault);
+        _registerVault(_token, vault, _type);
         return vault;
     }
 
