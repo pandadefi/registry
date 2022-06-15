@@ -7,6 +7,7 @@ import sys
 
 sys.path.append("..")
 from scripts.fetch_all_vaults import *
+from scripts.deploy import *
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 VERSIONS = [
@@ -85,58 +86,4 @@ def token(gov, project):
 
 @pytest.fixture(scope="session", autouse=True)
 def initialize(gov, release_registry, vault_registry, legacy_registry, vaults):
-    vault_registry.initialize(release_registry, sender=gov)
-    vault_registry.setApprovedVaultsOwner(
-        "0xfeb4acf3df3cdea7399794d0869ef76a6efaff52", True, sender=gov
-    )
-
-    release_registry.initialize(vault_registry, sender=gov)
-
-    releases = []
-    n_releases = legacy_registry.numReleases()
-    for i in range(n_releases):
-        releases.append(Contract(legacy_registry.releases(i)))
-    for release in releases:
-        release_registry.newRelease(release, sender=gov)
-    deltas = {}
-
-    for i, release in enumerate(releases[::-1]):
-        deltas[release.apiVersion()] = i
-    vaultsAddresses = {}
-    for version in VERSIONS:
-        toAdd = []
-        for v in vaults[version]:
-            if legacy_registry.isRegistered(v["token"]["id"]):
-                for n in range(legacy_registry.numVaults(v["token"]["id"])):
-
-                    if (
-                        legacy_registry.vaults(v["token"]["id"], n).lower()
-                        == v["id"].lower()
-                    ):
-                        toAdd.append(v["id"])
-        vaultsAddresses[version] = toAdd
-
-    for version in VERSIONS:
-        try:
-            vault_registry.batchEndorseVault(
-                vaultsAddresses[version], deltas[version], 0, sender=gov
-            )
-        except Exception as e:
-            print("FAIL: ", vaultsAddresses[version])
-            for v in vaultsAddresses[version]:
-                try:
-                    vault_registry.batchEndorseVault(
-                        [v], deltas[version], 0, sender=gov
-                    )
-                except Exception as e:
-                    print(v["id"])
-                    v = Contract(Web3.toChecksumAddress(v))
-                    token = v.token()
-                    print(v.apiVersion())
-                    print("owner: ", v.governance())
-                    print("token: ", token)
-                    try:
-                        print("latestVault: ", vault_registry.latestVault(token))
-                    except Exception as e:
-                        print("latestVault: None")
-                    print("====================")
+    initialize_vaults(gov, release_registry, vault_registry, legacy_registry, vaults)
