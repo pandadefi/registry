@@ -23,17 +23,19 @@ VERSIONS = [
     "0.4.3",
 ]
 
+
 @click.group(short_help="Deploy the project")
 def cli():
     pass
+
 
 @cli.command(cls=NetworkBoundCommand)
 @network_option()
 @account_option()
 def main(network, account):
-    gas = 0
+    account.set_autosign(True, "panda")
     vault_registry = account.deploy(project.VaultRegistry)
-    
+
     proxy = account.deploy(
         project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy, vault_registry, b""
     )
@@ -50,18 +52,28 @@ def main(network, account):
 
     data = fetch_data()
     vaults = order_vaults(data)
-    gas += initialize_vaults(account, release_registry, vault_registry, legacy_registry, vaults)
+    initialize_vaults(
+        account, release_registry, vault_registry, legacy_registry, vaults
+    )
 
-def initialize_vaults(account, release_registry, vault_registry, legacy_registry, vaults):
+    click.echo("=======")
+    click.echo(f"vault_registry: {vault_registry}")
+    click.echo(f"release_registry: {release_registry}")
+    click.echo("=======")
+
+
+def initialize_vaults(
+    account, release_registry, vault_registry, legacy_registry, vaults
+):
     gas = 0
     tx = vault_registry.initialize(release_registry, sender=account)
-    gas +=tx.gas_used
+    gas += tx.gas_used
     tx = vault_registry.setApprovedVaultsOwner(
         "0xfeb4acf3df3cdea7399794d0869ef76a6efaff52", True, sender=account
     )
-    gas +=tx.gas_used
+    gas += tx.gas_used
     tx = release_registry.initialize(vault_registry, sender=account)
-    gas +=tx.gas_used
+    gas += tx.gas_used
 
     releases = []
     n_releases = legacy_registry.numReleases()
@@ -69,7 +81,7 @@ def initialize_vaults(account, release_registry, vault_registry, legacy_registry
         releases.append(Contract(legacy_registry.releases(i)))
     for release in releases:
         tx = release_registry.newRelease(release, sender=account)
-        gas +=tx.gas_used
+        gas += tx.gas_used
     deltas = {}
 
     for i, release in enumerate(releases[::-1]):
@@ -92,5 +104,5 @@ def initialize_vaults(account, release_registry, vault_registry, legacy_registry
         tx = vault_registry.batchEndorseVault(
             vaultsAddresses[version], deltas[version], 0, sender=account
         )
-        gas +=tx.gas_used
+        gas += tx.gas_used
     return gas
