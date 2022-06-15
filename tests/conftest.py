@@ -51,13 +51,19 @@ def fish(accounts):
 @pytest.fixture(scope="session")
 def release_registry(gov, project):
     release_registry = gov.deploy(project.ReleaseRegistry)
-    yield release_registry
+    yield gov.deploy(
+        project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy,
+        release_registry,
+        b"",
+    )
 
 
 @pytest.fixture(scope="session")
 def vault_registry(gov, project):
     vault_registry = gov.deploy(project.VaultRegistry)
-    yield vault_registry
+    yield gov.deploy(
+        project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy, vault_registry, b""
+    )
 
 
 @pytest.fixture(scope="session")
