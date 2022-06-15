@@ -50,6 +50,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     event NewVault(
         address indexed token,
         uint256 indexed vaultId,
+        VaultType vaultType,
         address vault,
         string apiVersion
     );
@@ -145,7 +146,13 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
             isRegistered[_token] = true;
             tokens.push(_token);
         }
-        emit NewVault(_token, nVaults, _vault, IVault(_vault).apiVersion());
+        emit NewVault(
+            _token,
+            nVaults,
+            _type,
+            _vault,
+            IVault(_vault).apiVersion()
+        );
     }
 
     /**
