@@ -59,6 +59,8 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     event VaultTagged(address vault, string tag);
 
+    event RoleUpdated(address account, bool canTag, bool canEndorse);
+
     error GovernanceMismatch(address vault);
     error VersionMissmatch(string v1, string v2);
     error EndorseVaultWithSameVersion(address existingVault, address newVault);
@@ -329,6 +331,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     ) external onlyOwner {
         banksy[_addr] = _tag;
         vaultEndorsers[_addr] = _endorse;
+        emit RoleUpdated(_addr, _tag, _endorse);
     }
 
     function setApprovedVaultsOwner(address _governance, bool _approved)
