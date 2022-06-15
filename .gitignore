@@ -1,0 +1,9 @@
+__pycache__
+.env
+.history
+.hypothesis/
+build/
+reports/
+contracts/.cache
+.build/
+node_modules/
