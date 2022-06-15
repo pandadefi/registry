@@ -24,6 +24,7 @@ interface IReleaseRegistry {
 contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     enum VaultType {
         DEFAULT,
+        AUTOMATED,
         FIXED_TERM,
         EXPERIMENTAL
     } // Could be replaced by a uint.
@@ -187,6 +188,10 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         }
         // Add to the end of the list of vaults for token
         _registerVault(IVault(_vault).token(), _vault, _type);
+    }
+
+    function endorseVault(address _vault, uint256 _releaseDelta) external {
+        endorseVault(_vault, _releaseDelta, VaultType.DEFAULT);
     }
 
     function endorseVault(address _vault) external {

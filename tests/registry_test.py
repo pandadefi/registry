@@ -43,16 +43,20 @@ def test_create_different_types(vault_registry, token, gov, project):
         token, gov, gov, gov, "test default", "test default", 0, 0, sender=gov
     )
     vault_registry.newVault(
-        token, gov, gov, gov, "test FT", "test FT", 0, 1, sender=gov
+        token, gov, gov, gov, "test Auto", "test Auto", 0, 1, sender=gov
     )
     vault_registry.newVault(
-        token, gov, gov, gov, "test experimental", "test experimental", 0, 2, sender=gov
+        token, gov, gov, gov, "test FT", "test FT", 0, 2, sender=gov
+    )
+    vault_registry.newVault(
+        token, gov, gov, gov, "test experimental", "test experimental", 0, 3, sender=gov
     )
     assert vault_registry.latestVault(token) == vault_registry.latestVault(token, 0)
 
     assert Vault.at(vault_registry.latestVault(token, 0)).name() == "test default"
-    assert Vault.at(vault_registry.latestVault(token, 1)).name() == "test FT"
-    assert Vault.at(vault_registry.latestVault(token, 2)).name() == "test experimental"
+    assert Vault.at(vault_registry.latestVault(token, 1)).name() == "test Auto"
+    assert Vault.at(vault_registry.latestVault(token, 2)).name() == "test FT"
+    assert Vault.at(vault_registry.latestVault(token, 3)).name() == "test experimental"
 
     with ape.reverts():
         vault_registry.newVault(
@@ -60,9 +64,21 @@ def test_create_different_types(vault_registry, token, gov, project):
         )
     with ape.reverts():
         vault_registry.newVault(
-            token, gov, gov, gov, "test FT", "test FT", 0, 1, sender=gov
+            token, gov, gov, gov, "test Auto", "test Auto", 0, 1, sender=gov
         )
     with ape.reverts():
         vault_registry.newVault(
-            token, gov, gov, gov, "test experimental", "test experimental", 0, 2, sender=gov
+            token, gov, gov, gov, "test FT", "test FT", 0, 2, sender=gov
+        )
+    with ape.reverts():
+        vault_registry.newVault(
+            token,
+            gov,
+            gov,
+            gov,
+            "test experimental",
+            "test experimental",
+            0,
+            3,
+            sender=gov,
         )
