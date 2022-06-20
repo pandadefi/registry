@@ -2,6 +2,8 @@ import pytest
 from ape import chain, project
 import ape
 
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 
 def test_version_mutch_match(legacy_registry, release_registry):
     legacy_n_releases = legacy_registry.numReleases()
@@ -82,3 +84,7 @@ def test_create_different_types(vault_registry, token, gov, project):
             3,
             sender=gov,
         )
+
+
+def test_do_not_throw_if_vault_do_not_exists(vault_registry, token):
+    assert vault_registry.latestVault(token) == ZERO_ADDRESS

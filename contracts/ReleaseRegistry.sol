@@ -5,10 +5,6 @@ import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "./IVault.sol";
 
-interface IVaultRegistry {
-    function registerVault(address _token, address _vault) external;
-}
-
 contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
     address public vaultRegistry;
     // len(releases)
