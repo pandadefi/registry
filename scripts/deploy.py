@@ -18,6 +18,7 @@ VERSIONS = [
     "0.3.3",
     "0.3.4",
     "0.3.5",
+    "0.4.0",
     "0.4.1",
     "0.4.2",
     "0.4.3",
@@ -36,10 +37,12 @@ def main(network, account):
     account.set_autosign(True, "panda")
     vault_registry = account.deploy(project.VaultRegistry)
 
-    proxy = account.deploy(
-        project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy, vault_registry, b""
-    )
-    vault_registry = project.VaultRegistry.at(proxy.address)
+    # proxy = account.deploy(
+    #     project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy, vault_registry, b""
+    # )
+    # vault_registry = project.VaultRegistry.at(proxy.address)
+
+    vault_registry = Contract("0xc3EFbfdB50cF06E8E5Bb623Af28678D72CaeafEa")
 
     release_registry = account.deploy(project.ReleaseRegistry)
     proxy = account.deploy(
@@ -101,8 +104,9 @@ def initialize_vaults(
         vaultsAddresses[version] = toAdd
 
     for version in VERSIONS:
-        tx = vault_registry.batchEndorseVault(
-            vaultsAddresses[version], deltas[version], 0, sender=account
-        )
-        gas += tx.gas_used
+        if len(vaultsAddresses[version]) > 0:
+            tx = vault_registry.batchEndorseVault(
+                vaultsAddresses[version], deltas[version], 0, sender=account
+            )
+            gas += tx.gas_used
     return gas
