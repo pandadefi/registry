@@ -1,3 +1,4 @@
+from re import A
 import pytest
 from ape import chain, project
 import ape
@@ -85,6 +86,11 @@ def test_create_different_types(vault_registry, token, gov, project):
             sender=gov,
         )
 
+
+def kick_vault_from_registry(vault_registry):
+    dai = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    
+    assert 1 == 2
 
 def test_do_not_throw_if_vault_do_not_exists(vault_registry, token):
     assert vault_registry.latestVault(token) == ZERO_ADDRESS

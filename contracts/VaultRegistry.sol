@@ -64,6 +64,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     error GovernanceMismatch(address vault);
     error VersionMissmatch(string v1, string v2);
     error EndorseVaultWithSameVersion(address existingVault, address newVault);
+    error VaultNotFound(address vault);
 
     function initialize(address _releaseRegistry) external initializer {
         releaseRegistry = _releaseRegistry;
@@ -74,16 +75,17 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         require(msg.sender == owner(), "not allowed");
     }
 
-    function numTokens() external returns (uint256) {
+    function numTokens() external view returns (uint256) {
         return tokens.length;
     }
 
-    function numVaults(address _token) external returns (uint256) {
+    function numVaults(address _token) external view returns (uint256) {
         return vaults[_token][VaultType.DEFAULT].length;
     }
 
     function numVaults(address _token, VaultType _type)
         external
+        view
         returns (uint256)
     {
         return vaults[_token][_type].length;
@@ -358,5 +360,25 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         require(banksy[msg.sender], "not banksy");
         tags[_vault] = _tag;
         emit VaultTagged(_vault, _tag);
+    }
+
+    function kick(address _vault, VaultType _type) external onlyOwner {
+        address token = IVault(_vault).token();
+        address[] storage tokenVaults = vaults[token][_type];
+        uint256 length = tokenVaults.length;
+        bool found;
+        for(uint256 i; i < length; ++i) {
+            if(tokenVaults[i] == _vault) {
+                found = true;
+            }
+            if(found && i+1 <length) {
+                tokenVaults[i] = tokenVaults[i+1];
+            }
+        }
+        if(found) {
+            tokenVaults.pop();
+        } else {
+            revert VaultNotFound(_vault);
+        }
     }
 }
