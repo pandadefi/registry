@@ -118,6 +118,10 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         returns (address)
     {
         address[] memory tokenVaults = vaults[_token][_type];
+        uint256 length = tokenVaults.length;
+        if (length == 0) {
+            return address(0x0);
+        }
         return tokenVaults[tokenVaults.length - 1]; // dev: no vault for token
     }
 
