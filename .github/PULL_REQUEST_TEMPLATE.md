@@ -6,7 +6,7 @@ Fixes # (issue)
 
 ## Checklist
 
-- [ ] I have run vyper and solidity linting
+- [ ] I have run solidity linting
 - [ ] I have run the tests on my machine
 - [ ] I have followed commitlint guidelines
 - [ ] I have rebased my changes to the latest version of the main branch

@@ -42,27 +42,27 @@ def main(network, account):
     # )
     # vault_registry = project.VaultRegistry.at(proxy.address)
 
-    vault_registry = Contract("0xc3EFbfdB50cF06E8E5Bb623Af28678D72CaeafEa")
+    # vault_registry = Contract("0xc3EFbfdB50cF06E8E5Bb623Af28678D72CaeafEa")
 
-    release_registry = account.deploy(project.ReleaseRegistry)
-    proxy = account.deploy(
-        project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy,
-        release_registry,
-        b"",
-    )
-    release_registry = project.ReleaseRegistry.at(proxy.address)
-    legacy_registry = Contract("0x50c1a2eA0a861A967D9d0FFE2AE4012c2E053804")
+    # release_registry = account.deploy(project.ReleaseRegistry)
+    # proxy = account.deploy(
+    #     project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy,
+    #     release_registry,
+    #     b"",
+    # )
+    # release_registry = project.ReleaseRegistry.at(proxy.address)
+    # legacy_registry = Contract("0x50c1a2eA0a861A967D9d0FFE2AE4012c2E053804")
 
-    data = fetch_data()
-    vaults = order_vaults(data)
-    initialize_vaults(
-        account, release_registry, vault_registry, legacy_registry, vaults
-    )
+    # data = fetch_data()
+    # vaults = order_vaults(data)
+    # initialize_vaults(
+    #     account, release_registry, vault_registry, legacy_registry, vaults
+    # )
 
-    click.echo("=======")
-    click.echo(f"vault_registry: {vault_registry}")
-    click.echo(f"release_registry: {release_registry}")
-    click.echo("=======")
+    # click.echo("=======")
+    # click.echo(f"vault_registry: {vault_registry}")
+    # click.echo(f"release_registry: {release_registry}")
+    # click.echo("=======")
 
 
 def initialize_vaults(

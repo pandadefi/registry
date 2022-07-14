@@ -1,7 +1,6 @@
 plugins:
   - name: solidity
   - name: hardhat
-  - name: vyper
   - name: infura
   - name: etherscan
 

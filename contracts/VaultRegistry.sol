@@ -91,7 +91,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     /**
      @notice Returns the latest deployed vault for the given token.
-     @dev Throws if no vaults are endorsed yet for the given token.
+     @dev Return zero if no vault is associated with the token
      @param _token The token address to find the latest vault for.
      @return The address of the latest vault for the given token.
      NOTE: Throws if there has not been a deployed vault yet for this token
@@ -107,7 +107,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     /**
      @notice Returns the latest deployed vault for the given token.
-     @dev Throws if no vaults are endorsed yet for the given token.
+     @dev Return zero if no vault is associated with the token
      @param _token The token address to find the latest vault for.
      @return The address of the latest vault for the given token.
      NOTE: Throws if there has not been a deployed vault yet for this token
