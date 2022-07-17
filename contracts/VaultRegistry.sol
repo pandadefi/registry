@@ -97,12 +97,11 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
      NOTE: Throws if there has not been a deployed vault yet for this token
      */
     function latestVault(address _token) external view returns (address) {
-        address[] memory tokenVaults = vaults[_token][VaultType.DEFAULT];
-        uint256 length = tokenVaults.length;
+        uint256 length = vaults[_token][VaultType.DEFAULT].length;
         if (length == 0) {
             return address(0x0);
         }
-        return tokenVaults[length - 1];
+        return vaults[_token][VaultType.DEFAULT][length - 1];
     }
 
     /**
@@ -117,12 +116,11 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         view
         returns (address)
     {
-        address[] memory tokenVaults = vaults[_token][_type];
-        uint256 length = tokenVaults.length;
+        uint256 length = vaults[_token][_type].length;
         if (length == 0) {
             return address(0x0);
         }
-        return tokenVaults[tokenVaults.length - 1]; // dev: no vault for token
+        return vaults[_token][_type][length - 1]; // dev: no vault for token
     }
 
     function _registerVault(
