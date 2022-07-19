@@ -74,16 +74,17 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         require(msg.sender == owner(), "not allowed");
     }
 
-    function numTokens() external returns (uint256) {
+    function numTokens() external view returns (uint256) {
         return tokens.length;
     }
 
-    function numVaults(address _token) external returns (uint256) {
+    function numVaults(address _token) external view returns (uint256) {
         return vaults[_token][VaultType.DEFAULT].length;
     }
 
     function numVaults(address _token, VaultType _type)
         external
+        view
         returns (uint256)
     {
         return vaults[_token][_type].length;
