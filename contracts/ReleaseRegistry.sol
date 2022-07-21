@@ -6,8 +6,7 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "./IVault.sol";
 
 contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
-    address public vaultRegistry;
-    // len(releases)
+    address public vaultRegistry; // not used but kept in case of upgrade, can be removed if not used.
     uint256 public numReleases;
     mapping(uint256 => address) public releases;
 
@@ -33,8 +32,7 @@ contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     event VaultTagged(address vault, string tag);
 
-    function initialize(address _vaultRegistry) external initializer {
-        vaultRegistry = _vaultRegistry;
+    function initialize() external initializer {
         __Ownable_init();
     }
 
