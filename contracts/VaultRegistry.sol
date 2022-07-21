@@ -381,4 +381,9 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         releaseRegistry = _newRegistry;
         emit ReleaseRegistryUpdated(releaseRegistry);
     }
+
+    function updateReleaseRegistry(address _newRegistry) external onlyOwner {
+        releaseRegistry = _newRegistry;
+        emit ReleaseRegistryUpdated(releaseRegistry);
+    }
 }
