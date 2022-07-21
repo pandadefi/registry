@@ -116,7 +116,19 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
      NOTE: Throws if there has not been a deployed vault yet for this token
      */
     function latestVault(address _token) external view returns (address) {
-        return _latestVault(_token, VaultType.DEFAULT);
+        address vault = _latestVault(_token, VaultType.DEFAULT);
+        if(vault != address(0)) {
+            return vault;
+        }
+        address vault = _latestVault(_token, VaultType.AUTOMATED);
+        if(vault != address(0)) {
+            return vault;
+        }
+        address vault = _latestVault(_token, VaultType.FIXED_TERM);
+        if(vault != address(0)) {
+            return vault;
+        }
+        return _latestVault(_token, VaultType.EXPERIMENTAL);
     }
 
     /**
