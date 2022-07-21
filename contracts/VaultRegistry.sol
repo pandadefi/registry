@@ -29,6 +29,13 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         EXPERIMENTAL
     } // Could be replaced by a uint.
 
+    struct Vaults {
+        address DEFAULT;
+        address AUTOMATED;
+        address FIXED_TERM;
+        address EXPERIMENTAL;
+    }
+
     address public releaseRegistry;
     // token => type => number => address
     mapping(address => mapping(VaultType => address[])) public vaults;
@@ -39,7 +46,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     mapping(address => bool) public approvedVaultsOwner;
 
     mapping(address => string) public tags;
-    mapping(address => bool) public banksy;
+    mapping(address => bool) public isVaultEndorsed;
     mapping(address => bool) public vaultEndorsers;
 
     event NewRelease(
@@ -57,9 +64,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     event ApprovedVaultOwnerUpdated(address governance, bool approved);
 
-    event VaultTagged(address vault, string tag);
-
-    event RoleUpdated(address account, bool canTag, bool canEndorse);
+    event ApprovedVaultEndorser(address account, bool canEndorse);
 
     error GovernanceMismatch(address vault);
     error VersionMissmatch(string v1, string v2);
@@ -98,22 +103,22 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
      NOTE: Throws if there has not been a deployed vault yet for this token
      */
     function latestVault(address _token) external view returns (address) {
-        uint256 length = vaults[_token][VaultType.DEFAULT].length;
-        if (length == 0) {
-            return address(0x0);
-        }
-        return vaults[_token][VaultType.DEFAULT][length - 1];
+        return _latestVault(_token, VaultType.DEFAULT);
     }
 
     /**
      @notice Returns the latest deployed vault for the given token.
-     @dev Return zero if no vault is associated with the token
+     @dev Return zero if no vault of the _type is associated with the token
      @param _token The token address to find the latest vault for.
      @return The address of the latest vault for the given token.
      NOTE: Throws if there has not been a deployed vault yet for this token
      */
-    function latestVault(address _token, VaultType _type)
-        external
+    function _latestVault(address _token, VaultType _type) {
+        return _latestVault(_token, _type);
+    }
+
+    function _latestVault(address _token, VaultType _type)
+        internal
         view
         returns (address)
     {
@@ -121,7 +126,17 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         if (length == 0) {
             return address(0x0);
         }
-        return vaults[_token][_type][length - 1]; // dev: no vault for token
+        return vaults[_token][_type][length - 1];
+    }
+
+    function latestVaults(address _token) returns (Vaults) {
+        return
+            Vaults({
+                DEFAULT: _latestVault(_token, VaultType.DEFAULT),
+                AUTOMATED: _latestVault(_token, VaultType.AUTOMATED),
+                FIXED_TERM: _latestVault(_token, VaultType.FIXED_TERM),
+                EXPERIMENTAL: _latestVault(_token, VaultType.EXPERIMENTAL)
+            });
     }
 
     function _registerVault(
@@ -155,6 +170,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
             isRegistered[_token] = true;
             tokens.push(_token);
         }
+        isVaultEndorsed[_vault] = true;
         emit NewVault(
             _token,
             nVaults,
@@ -328,38 +344,27 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     @notice Set the ability of a particular tagger to tag current vaults.
     @dev Throws if caller is not `governance`.
     @param _addr The address to approve or deny access.
-    @param _tag Allowed to tag
-    @param _endorse Allowed to endorse
+    @param _approved Allowed to endorse
      */
-    function setRole(
-        address _addr,
-        bool _tag,
-        bool _endorse
-    ) external onlyOwner {
-        banksy[_addr] = _tag;
-        vaultEndorsers[_addr] = _endorse;
-        emit RoleUpdated(_addr, _tag, _endorse);
+    function setVaultEndorsers(address _addr, bool _approved)
+        external
+        onlyOwner
+    {
+        vaultEndorsers[_addr] = _approved;
+        emit ApprovedVaultEndorser(_addr, _tag, _endorse);
     }
 
+    /**
+    @notice Set the vaults owners
+    @dev Throws if caller is not `governance`.
+    @param _addr The address to approve or deny access.
+    @param _approved Allowed to own vault
+     */
     function setApprovedVaultsOwner(address _governance, bool _approved)
         external
         onlyOwner
     {
         approvedVaultsOwner[_governance] = _approved;
         emit ApprovedVaultOwnerUpdated(_governance, _approved);
-    }
-
-    /**
-    @notice Tag a Vault with a message.
-    @dev
-        Throws if caller is not `governance` or an approved tagger.
-        Emits a `VaultTagged` event.
-    @param _vault The address to tag with the given `tag` message.
-    @param _tag The message to tag `vault` with.
-    */
-    function tagVault(address _vault, string calldata _tag) external {
-        require(banksy[msg.sender], "not banksy");
-        tags[_vault] = _tag;
-        emit VaultTagged(_vault, _tag);
     }
 }
