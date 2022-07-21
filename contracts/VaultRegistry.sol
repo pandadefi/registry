@@ -65,6 +65,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     event ApprovedVaultOwnerUpdated(address governance, bool approved);
 
     event ApprovedVaultEndorser(address account, bool canEndorse);
+    event ReleaseRegistryUpdated(address newRegistry);
 
     error GovernanceMismatch(address vault);
     error VersionMissmatch(string v1, string v2);
@@ -95,6 +96,18 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         return vaults[_token][_type].length;
     }
 
+    function _latestVault(address _token, VaultType _type)
+        internal
+        view
+        returns (address)
+    {
+        uint256 length = vaults[_token][_type].length;
+        if (length == 0) {
+            return address(0x0);
+        }
+        return vaults[_token][_type][length - 1];
+    }
+
     /**
      @notice Returns the latest deployed vault for the given token.
      @dev Return zero if no vault is associated with the token
@@ -113,23 +126,19 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
      @return The address of the latest vault for the given token.
      NOTE: Throws if there has not been a deployed vault yet for this token
      */
-    function _latestVault(address _token, VaultType _type) {
-        return _latestVault(_token, _type);
-    }
-
-    function _latestVault(address _token, VaultType _type)
-        internal
+    function latestVault(address _token, VaultType _type)
+        external
         view
         returns (address)
     {
-        uint256 length = vaults[_token][_type].length;
-        if (length == 0) {
-            return address(0x0);
-        }
-        return vaults[_token][_type][length - 1];
+        return _latestVault(_token, _type);
     }
 
-    function latestVaults(address _token) returns (Vaults) {
+    function latestVaults(address _token)
+        external
+        view
+        returns (Vaults memory)
+    {
         return
             Vaults({
                 DEFAULT: _latestVault(_token, VaultType.DEFAULT),
@@ -351,7 +360,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         onlyOwner
     {
         vaultEndorsers[_addr] = _approved;
-        emit ApprovedVaultEndorser(_addr, _tag, _endorse);
+        emit ApprovedVaultEndorser(_addr, _approved);
     }
 
     /**
@@ -360,11 +369,16 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     @param _addr The address to approve or deny access.
     @param _approved Allowed to own vault
      */
-    function setApprovedVaultsOwner(address _governance, bool _approved)
+    function setApprovedVaultsOwner(address _addr, bool _approved)
         external
         onlyOwner
     {
-        approvedVaultsOwner[_governance] = _approved;
-        emit ApprovedVaultOwnerUpdated(_governance, _approved);
+        approvedVaultsOwner[_addr] = _approved;
+        emit ApprovedVaultOwnerUpdated(_addr, _approved);
+    }
+
+    function updateReleaseRegistry(address _newRegistry) external onlyOwner {
+        releaseRegistry = _newRegistry;
+        emit ReleaseRegistryUpdated(releaseRegistry);
     }
 }
