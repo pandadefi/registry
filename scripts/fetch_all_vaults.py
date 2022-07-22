@@ -48,7 +48,6 @@ def unique(list):
             unique_list.append(x)
     return unique_list
 
-
 def fetch_data():
     result = run_query(query)
     # # pretty print the results to make it easier to read
@@ -77,3 +76,24 @@ def order_vaults(data):
         vaults[vault["apiVersion"]].append(vault)
 
     return vaults
+
+    for i, release in enumerate(releases[::-1]):
+        deltas[release.apiVersion()] = i
+    vaultsAddresses = {}
+    for version in VERSIONS:
+        toAdd = []
+        for v in vaults[version]:
+            if legacy_registry.isRegistered(v["token"]["id"]):
+                for n in range(legacy_registry.numVaults(v["token"]["id"])):
+                    if (
+                        legacy_registry.vaults(v["token"]["id"], n).lower()
+                        == v["id"].lower()
+                    ):
+                        toAdd.append(v["id"])
+        vaultsAddresses[version] = toAdd
+
+    for version in VERSIONS:
+        if len(vaultsAddresses[version]) > 0:
+            vault_registry.batchEndorseVault(
+                vaultsAddresses[version], deltas[version], 0, {"from": account}
+            )

@@ -30,12 +30,14 @@ def cli():
     pass
 
 
-@cli.command(cls=NetworkBoundCommand)
-@network_option()
-@account_option()
-def main(network, account):
-    account.set_autosign(True, "panda")
-    vault_registry = account.deploy(project.VaultRegistry)
+# For now ape doesn't default block approval timeout to infinity making it hard to run long scripts.
+# @cli.command(cls=NetworkBoundCommand)
+# @network_option()
+# @account_option()
+# def main(network, account):
+
+    # account.set_autosign(True, "panda")
+    # vault_registry = account.deploy(project.VaultRegistry)
 
     # proxy = account.deploy(
     #     project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy, vault_registry, b""
