@@ -75,7 +75,7 @@ def initialize_vaults(
         "0xfeb4acf3df3cdea7399794d0869ef76a6efaff52", True, sender=account
     )
     gas += tx.gas_used
-    tx = release_registry.initialize(vault_registry, sender=account)
+    tx = release_registry.initialize(sender=account)
     gas += tx.gas_used
 
     releases = []
