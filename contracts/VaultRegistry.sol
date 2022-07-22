@@ -73,6 +73,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     function initialize(address _releaseRegistry) external initializer {
         releaseRegistry = _releaseRegistry;
+        ReleaseRegistryUpdated(_releaseRegistry);
         __Ownable_init();
     }
 

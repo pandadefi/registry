@@ -16,21 +16,7 @@ contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
         string apiVersion
     );
 
-    event NewVault(
-        address indexed token,
-        uint256 indexed vaultId,
-        address vault,
-        string apiVersion
-    );
-
-    event NewExperimentalVault(
-        address indexed token,
-        address indexed deployer,
-        address vault,
-        string apiVersion
-    );
-
-    event VaultTagged(address vault, string tag);
+    event Clone(address vault);
 
     function initialize() external initializer {
         __Ownable_init();
@@ -95,6 +81,7 @@ contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
             address release = releases[_releaseTarget];
             require(release != address(0), "unknown release");
             vault = _clone(release);
+            emit NewClone(vault);
         }
         // NOTE: Must initialize the Vault atomically with deploying it
         IVault(vault).initialize(
