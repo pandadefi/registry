@@ -15,7 +15,7 @@ dependencies:
 # path remapping to support imports from GitHub/NPM
 compiler:
   solc:
-    version: 0.8.14
+    version: 0.8.15
     remappings:
       - "@openzeppelin/contracts=openzeppelin/openzeppelin-contracts@4.6.0/contracts"
       - "@openzeppelin-upgradeable/contracts=openZeppelin/openzeppelin-contracts-upgradeable@4.6.0/contracts"

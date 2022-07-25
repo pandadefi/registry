@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
@@ -22,25 +22,12 @@ interface IReleaseRegistry {
 }
 
 contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
-    enum VaultType {
-        DEFAULT,
-        AUTOMATED,
-        FIXED_TERM,
-        EXPERIMENTAL
-    } // Could be replaced by a uint.
-
-    struct Vaults {
-        address DEFAULT;
-        address AUTOMATED;
-        address FIXED_TERM;
-        address EXPERIMENTAL;
-    }
-
+    uint256 constant DEFAULT = 1;
     address public releaseRegistry;
     mapping(address => address[]) public vaults;
     address[] public tokens;
     mapping(address => bool) public isRegistered;
-    mapping(address => VaultType) public vaultType;
+    mapping(address => uint256) public vaultType;
     mapping(address => bool) public approvedVaultsOwner;
     mapping(address => string) public tags;
     mapping(address => bool) public isVaultEndorsed;
@@ -54,7 +41,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     event NewVault(
         address indexed token,
         uint256 indexed vaultId,
-        VaultType vaultType,
+        uint256 vaultType,
         address vault,
         string apiVersion
     );
@@ -67,6 +54,8 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     error GovernanceMismatch(address vault);
     error VersionMissmatch(string v1, string v2);
     error EndorseVaultWithSameVersion(address existingVault, address newVault);
+    error VaultAlreadyEndorsed(address vault, uint256 vaultType);
+    error InvalidVaultType();
 
     function initialize(address _releaseRegistry) external initializer {
         releaseRegistry = _releaseRegistry;
@@ -86,8 +75,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         return vaults[_token].length;
     }
 
-    function _latestVault(address _token) internal view returns (address)
-    {
+    function _latestVault(address _token) internal view returns (address) {
         uint256 length = numVaults(_token);
         if (length == 0) {
             return address(0);
@@ -95,15 +83,18 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         return vaults[_token][length - 1];
     }
 
-    function _latestVaultOfType(address _token, VaultType _type) internal view returns (address)
+    function _latestVaultOfType(address _token, uint256 _type)
+        internal
+        view
+        returns (address)
     {
         uint256 length = numVaults(_token);
         if (length == 0) {
             return address(0);
         }
-        for (uint i = length - 1; i >= 0; i--){
+        for (uint256 i = length - 1; i >= 0; i--){
             address vault = vaults[_token][i];
-            if (vaultType[vault] == _type){
+            if (vaultType[vault] == _type) {
                 return vault;
             }
         }
@@ -128,44 +119,36 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
      @param _type The vault type to find the latest vault for.
      @return The address of the latest vault found matching both token and type.
      */
-    function latestVaultOfType(address _token, VaultType _type) external view returns (address) {
-        return _latestVaultOfType(_token, _type);
-    }
-
-    function latestVaults(address _token)
+    function latestVaultOfType(address _token, uint256 _type)
         external
         view
-        returns (Vaults memory)
+        returns (address)
     {
-        return
-            Vaults({
-                DEFAULT: _latestVaultOfType(_token, VaultType.DEFAULT),
-                AUTOMATED: _latestVaultOfType(_token, VaultType.AUTOMATED),
-                FIXED_TERM: _latestVaultOfType(_token, VaultType.FIXED_TERM),
-                EXPERIMENTAL: _latestVaultOfType(_token, VaultType.EXPERIMENTAL)
-            });
+        return _latestVaultOfType(_token, _type);
     }
 
     function _registerVault(
         address _token,
         address _vault,
-        VaultType _type
+        uint256 _type
     ) internal {
         // Check if there is an existing deployment for this token + type combination at the particular api version
         // NOTE: This doesn't check for strict semver-style linearly increasing release versions
+        if (vaultType[_vault] != 0) {
+            revert VaultAlreadyEndorsed(_vault, vaultType[_vault]);
+        }
+
+        if (_type == 0) {
+            revert InvalidVaultType();
+        }
+
         address latest = _latestVaultOfType(_token, _type);
-        if (latest != address(0)){
+        if (latest != address(0)) {
             if (
-                keccak256(
-                    bytes(
-                        IVault(latest).apiVersion()
-                    )
-                ) == keccak256(bytes(IVault(_vault).apiVersion()))
+                keccak256(bytes(IVault(latest).apiVersion())) ==
+                keccak256(bytes(IVault(_vault).apiVersion()))
             ) {
-                revert EndorseVaultWithSameVersion(
-                    latest,
-                    _vault
-                );
+                revert EndorseVaultWithSameVersion(latest, _vault);
             }
         }
         uint256 id = numVaults(_token);
@@ -179,13 +162,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
             tokens.push(_token);
         }
         isVaultEndorsed[_vault] = true;
-        emit NewVault(
-            _token,
-            id,
-            _type,
-            _vault,
-            IVault(_vault).apiVersion()
-        );
+        emit NewVault(_token, id, _type, _vault, IVault(_vault).apiVersion());
     }
 
     /**
@@ -205,7 +182,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     function endorseVault(
         address _vault,
         uint256 _releaseDelta,
-        VaultType _type
+        uint256 _type
     ) public {
         require(vaultEndorsers[msg.sender], "unauthorized");
         if (approvedVaultsOwner[IVault(_vault).governance()] == false) {
@@ -231,11 +208,11 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function endorseVault(address _vault, uint256 _releaseDelta) external {
-        endorseVault(_vault, _releaseDelta, VaultType.DEFAULT);
+        endorseVault(_vault, _releaseDelta, DEFAULT);
     }
 
     function endorseVault(address _vault) external {
-        endorseVault(_vault, 0, VaultType.DEFAULT);
+        endorseVault(_vault, 0, DEFAULT);
     }
 
     /**
@@ -256,7 +233,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     function batchEndorseVault(
         address[] calldata _vaults,
         uint256 _releaseDelta,
-        VaultType _type
+        uint256 _type
     ) external onlyOwner {
         uint256 releaseTarget = IReleaseRegistry(releaseRegistry)
             .numReleases() -
@@ -300,7 +277,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
                 _name,
                 _symbol,
                 _releaseDelta,
-                VaultType.DEFAULT
+                DEFAULT
             );
     }
 
@@ -331,7 +308,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         string calldata _name,
         string calldata _symbol,
         uint256 _releaseDelta,
-        VaultType _type
+        uint256 _type
     ) public returns (address) {
         require(vaultEndorsers[msg.sender], "unauthorized");
         require(approvedVaultsOwner[_governance], "not allowed vault owner");
@@ -378,6 +355,6 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
 
     function updateReleaseRegistry(address _newRegistry) external onlyOwner {
         releaseRegistry = _newRegistry;
-        emit ReleaseRegistryUpdated(releaseRegistry);
+        emit ReleaseRegistryUpdated(_newRegistry);
     }
 }
