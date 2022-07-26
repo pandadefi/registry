@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.14;
+pragma solidity ^0.8.15;
 
 import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
@@ -15,6 +15,8 @@ contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
         address template,
         string apiVersion
     );
+
+    event NewClone(address indexed vault);
 
     event Clone(address vault);
 
