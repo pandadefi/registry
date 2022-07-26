@@ -2,6 +2,7 @@ plugins:
   - name: solidity
   - name: hardhat
   - name: infura
+  - name: vyper
   - name: etherscan
 
 # require OpenZepplin Contracts
