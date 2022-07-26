@@ -101,7 +101,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         if (length == 0) {
             return address(0);
         }
-        for (uint i = length; i > 0; i--){
+        for (uint i = length - 1; i >= 0; i--){
             address vault = vaults[_token][i];
             if (vaultType[vault] == _type){
                 return vault;
