@@ -5,61 +5,14 @@ import sys
 sys.path.append("..")
 from scripts.fetch_all_vaults import *
 
-oz = project.load(Path.home() / ".brownie" / "packages" / config["dependencies"][1])
-
-VERSIONS = [
-    "0.2.2",
-    "0.3.0",
-    "0.3.1",
-    "0.3.2",
-    "0.3.3",
-    "0.3.4",
-    "0.3.5",
-    "0.4.0",
-    "0.4.1",
-    "0.4.2",
-    "0.4.3",
-]
-
 
 def main():
     account = accounts.load("deployer")
 
     release_registry = account.deploy(ReleaseRegistry)
-    proxy = account.deploy(oz.ERC1967Proxy, release_registry, b"")
-     
-    release_registry = Contract.from_abi(
-        "ReleaseRegistry", proxy, ReleaseRegistry.abi
-    )
-
-    vault_registry = account.deploy(VaultRegistry)
-    proxy = account.deploy(oz.ERC1967Proxy, vault_registry, b"")
-     
-    vault_registry = Contract.from_abi(
-        "VaultRegistry", proxy, VaultRegistry.abi
-    )
 
     legacy_registry = Contract("0x50c1a2eA0a861A967D9d0FFE2AE4012c2E053804")
-
-    data = fetch_data()
-    vaults = order_vaults(data)
-    initialize_vaults(
-        account, release_registry, vault_registry, legacy_registry, vaults
-    )
-
-
-def initialize_vaults(
-    account, release_registry, vault_registry, legacy_registry, vaults
-):
-    gas = 0
-    tx = vault_registry.initialize(release_registry, {"from": account})
-    gas += tx.gas_used
-    tx = vault_registry.setApprovedVaultsOwner(
-        "0xfeb4acf3df3cdea7399794d0869ef76a6efaff52", True, {"from": account}
-    )
-    gas += tx.gas_used
-    tx = release_registry.initialize({"from": account})
-    gas += tx.gas_used
+    vault_registry = account.deploy(VaultRegistry, release_registry, legacy_registry)
 
     releases = []
     n_releases = legacy_registry.numReleases()
@@ -68,25 +21,3 @@ def initialize_vaults(
 
     for release in releases:
         tx = release_registry.newRelease(release, {"from": account})
-    deltas = {}
-
-    for i, release in enumerate(releases[::-1]):
-        deltas[release.apiVersion()] = i
-    vaultsAddresses = {}
-    for version in VERSIONS:
-        toAdd = []
-        for v in vaults[version]:
-            if legacy_registry.isRegistered(v["token"]["id"]):
-                for n in range(legacy_registry.numVaults(v["token"]["id"])):
-                    if (
-                        legacy_registry.vaults(v["token"]["id"], n).lower()
-                        == v["id"].lower()
-                    ):
-                        toAdd.append(v["id"])
-        vaultsAddresses[version] = toAdd
-
-    for version in VERSIONS:
-        if len(vaultsAddresses[version]) > 0:
-            vault_registry.batchEndorseVault(
-                vaultsAddresses[version], deltas[version], 0, {"from": account}
-            )

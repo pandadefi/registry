@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.15;
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "./IVault.sol";
 
-contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
-    address public vaultRegistry; // not used but kept in case of upgrade, can be removed if not used.
+contract ReleaseRegistry is Ownable {
     uint256 public numReleases;
     mapping(uint256 => address) public releases;
 
@@ -19,14 +17,6 @@ contract ReleaseRegistry is OwnableUpgradeable, UUPSUpgradeable {
     event NewClone(address indexed vault);
 
     event Clone(address vault);
-
-    function initialize() external initializer {
-        __Ownable_init();
-    }
-
-    function _authorizeUpgrade(address) internal override {
-        require(msg.sender == owner(), "not allowed");
-    }
 
     /**
     @notice Returns the api version of the latest release.
