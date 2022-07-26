@@ -6,7 +6,6 @@ from ape import project, Contract
 import sys
 
 sys.path.append("..")
-from scripts.fetch_all_vaults import *
 from scripts.deploy import *
 
 
@@ -36,40 +35,17 @@ def fish(accounts):
 
 
 @pytest.fixture(scope="session")
-def release_registry(gov, project):
+def release_registry(gov, project, legacy_registry):
     release_registry = gov.deploy(project.ReleaseRegistry)
-    proxy = gov.deploy(
-        project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy,
-        release_registry,
-        b"",
-    )
-    yield project.ReleaseRegistry.at(proxy.address)
+    init_release_registry(legacy_registry, release_registry, gov)
+    yield release_registry
 
 
 @pytest.fixture(scope="session")
-def vault_registry(gov, project):
-    vault_registry = gov.deploy(project.VaultRegistry)
-    proxy = gov.deploy(
-        project.dependencies["openzeppelin"]["4.6.0"].ERC1967Proxy, vault_registry, b""
-    )
-    yield project.VaultRegistry.at(proxy.address)
-
-
-@pytest.fixture(scope="session")
-def data():
-    yield fetch_data()
-
-
-@pytest.fixture(scope="session")
-def vaults(data):
-    yield order_vaults(data)
+def vault_registry(gov, project, release_registry, legacy_registry):
+    yield gov.deploy(project.VaultRegistry, release_registry, legacy_registry)
 
 
 @pytest.fixture()
 def token(gov, project):
     yield gov.deploy(project.Token, "test")
-
-
-@pytest.fixture(scope="session", autouse=True)
-def initialize(gov, release_registry, vault_registry, legacy_registry, vaults):
-    initialize_vaults(gov, release_registry, vault_registry, legacy_registry, vaults)

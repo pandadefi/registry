@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.15;
 
-import "@openzeppelin-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IVault.sol";
 
 interface IReleaseRegistry {
@@ -21,8 +20,10 @@ interface IReleaseRegistry {
     ) external returns (address);
 }
 
-contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
-    uint256 constant DEFAULT = 1;
+contract VaultRegistry is Ownable {
+    uint256 constant DEFAULT_TYPE = 1;
+    address immutable LEGACY_REGISTRY;
+
     address public releaseRegistry;
     mapping(address => address[]) public vaults;
     address[] public tokens;
@@ -52,33 +53,34 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     event ReleaseRegistryUpdated(address newRegistry);
 
     error GovernanceMismatch(address vault);
+    error NotAllowedToEndorse();
     error VersionMissmatch(string v1, string v2);
     error EndorseVaultWithSameVersion(address existingVault, address newVault);
     error VaultAlreadyEndorsed(address vault, uint256 vaultType);
     error InvalidVaultType();
 
-    function initialize(address _releaseRegistry) external initializer {
+    constructor(address _releaseRegistry, address _legacyVault) {
         releaseRegistry = _releaseRegistry;
+        LEGACY_REGISTRY = _legacyVault;
         emit ReleaseRegistryUpdated(_releaseRegistry);
-        __Ownable_init();
-    }
-
-    function _authorizeUpgrade(address) internal override {
-        require(msg.sender == owner(), "not allowed");
     }
 
     function numTokens() external view returns (uint256) {
         return tokens.length;
     }
 
-    function numVaults(address _token) public view returns (uint256) {
+    function numVaults(address _token) external view returns (uint256) {
+        return _numVaults(_token);
+    }
+
+    function _numVaults(address _token) internal view returns (uint256) {
         return vaults[_token].length;
     }
 
     function _latestVault(address _token) internal view returns (address) {
-        uint256 length = numVaults(_token);
+        uint256 length = _numVaults(_token);
         if (length == 0) {
-            return address(0);
+            return _fetchFromLegacy(_token);
         }
         return vaults[_token][length - 1];
     }
@@ -88,15 +90,31 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
         view
         returns (address)
     {
-        uint256 length = numVaults(_token);
+        uint256 length = _numVaults(_token);
         if (length == 0) {
             return address(0);
         }
-        for (uint256 i = length - 1; i >= 0; i--){
+        for (uint256 i = length - 1; i >= 0; i--) {
             address vault = vaults[_token][i];
             if (vaultType[vault] == _type) {
                 return vault;
             }
+            if (i == 0) {
+                break;
+            }
+        }
+        return address(0);
+    }
+
+    function _fetchFromLegacy(address _token) internal view returns (address) {
+        bytes memory data = abi.encodeWithSignature(
+            "latestVault(address)",
+            _token
+        );
+        (bool success, bytes memory returnBytes) = address(LEGACY_REGISTRY)
+            .staticcall(data);
+        if (success) {
+            return abi.decode(returnBytes, (address));
         }
         return address(0);
     }
@@ -151,7 +169,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
                 revert EndorseVaultWithSameVersion(latest, _vault);
             }
         }
-        uint256 id = numVaults(_token);
+        uint256 id = _numVaults(_token);
         // Update the latest deployment
         vaults[_token].push(_vault);
         vaultType[_vault] = _type;
@@ -177,14 +195,17 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
          Throws if there already is a deployment for the vault's token with the latest api version.
          Emits a `NewVault` event.
      @param _vault The vault that will be endorsed by the Registry.
-     @param _releaseDelta Specify the number of releases prior to the latest to use as a target. Default is latest.
+     @param _releaseDelta Specify the number of releases prior to the latest to use as a target. DEFAULT_TYPE is latest.
     */
     function endorseVault(
         address _vault,
         uint256 _releaseDelta,
         uint256 _type
     ) public {
-        require(vaultEndorsers[msg.sender], "unauthorized");
+        if (vaultEndorsers[msg.sender] == false) {
+            revert NotAllowedToEndorse();
+        }
+
         if (approvedVaultsOwner[IVault(_vault).governance()] == false) {
             revert GovernanceMismatch(_vault);
         }
@@ -208,56 +229,11 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function endorseVault(address _vault, uint256 _releaseDelta) external {
-        endorseVault(_vault, _releaseDelta, DEFAULT);
+        endorseVault(_vault, _releaseDelta, DEFAULT_TYPE);
     }
 
     function endorseVault(address _vault) external {
-        endorseVault(_vault, 0, DEFAULT);
-    }
-
-    /**
-     @notice
-         Adds existing vaults to the list of "endorsed" vaults for that token.
-         Vaults must share the same release delta.
-     @dev
-         `governance` is set in the new vault as `governance`, with no ability to override.
-         Throws if caller isn't `governance`.
-         Throws if `vault`'s governance isn't `governance`.
-         Throws if no releases are registered yet.
-         Throws if `vault`'s api version does not match latest release.
-         Throws if there already is a deployment for the vault's token with the latest api version.
-         Emits a `NewVault` event.
-     @param _vaults The vaults that will be endorsed by the Registry.
-     @param _releaseDelta Specify the number of releases prior to the latest to use as a target. Default is latest.
-    */
-    function batchEndorseVault(
-        address[] calldata _vaults,
-        uint256 _releaseDelta,
-        uint256 _type
-    ) external onlyOwner {
-        uint256 releaseTarget = IReleaseRegistry(releaseRegistry)
-            .numReleases() -
-            1 -
-            _releaseDelta; // dev: no releases
-
-        string memory apiVersion = IVault(
-            IReleaseRegistry(releaseRegistry).releases(releaseTarget)
-        ).apiVersion();
-
-        for (uint256 i = 0; i < _vaults.length; ++i) {
-            address vault = _vaults[i];
-            if (approvedVaultsOwner[IVault(vault).governance()] == false) {
-                revert GovernanceMismatch(vault);
-            }
-
-            if (
-                keccak256(bytes((IVault(vault).apiVersion()))) !=
-                keccak256(bytes((apiVersion)))
-            ) {
-                revert VersionMissmatch(IVault(vault).apiVersion(), apiVersion);
-            }
-            _registerVault(IVault(vault).token(), vault, _type);
-        }
+        endorseVault(_vault, 0, DEFAULT_TYPE);
     }
 
     function newVault(
@@ -277,7 +253,7 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
                 _name,
                 _symbol,
                 _releaseDelta,
-                DEFAULT
+                DEFAULT_TYPE
             );
     }
 
@@ -295,9 +271,9 @@ contract VaultRegistry is OwnableUpgradeable, UUPSUpgradeable {
     @param _token The token that may be deposited into the new Vault.
     @param _guardian The address authorized for guardian interactions in the new Vault.
     @param _rewards The address to use for collecting rewards in the new Vault
-    @param _name Specify a custom Vault name. Set to empty string for default choice.
-    @param _symbol Specify a custom Vault symbol name. Set to empty string for default choice.
-    @param _releaseDelta Specify the number of releases prior to the latest to use as a target. Default is latest.
+    @param _name Specify a custom Vault name. Set to empty string for DEFAULT_TYPE choice.
+    @param _symbol Specify a custom Vault symbol name. Set to empty string for DEFAULT_TYPE choice.
+    @param _releaseDelta Specify the number of releases prior to the latest to use as a target. DEFAULT_TYPE is latest.
     @return The address of the newly-deployed vault
      */
     function newVault(
