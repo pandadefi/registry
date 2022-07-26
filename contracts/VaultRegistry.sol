@@ -95,7 +95,7 @@ contract VaultRegistry is Ownable {
             return address(0);
         }
         uint256 i = length - 1;
-        while(true) {
+        while (true) {
             address vault = vaults[_token][i];
             if (vaultType[vault] == _type) {
                 return vault;
