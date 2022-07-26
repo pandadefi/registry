@@ -15,7 +15,7 @@ dependencies:
 
 solidity:
   import_remapping:
-    - "@openzeppelin/contracts=openzeppelin/v4.6.0"
+    - "@openzeppelin/contracts=openzeppelin/v4.7.1"
 
 ethereum:
   default_network: mainnet-fork
