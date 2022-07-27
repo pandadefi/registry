@@ -30,15 +30,9 @@ contract VaultRegistry is Ownable {
     mapping(address => bool) public isRegistered;
     mapping(address => uint256) public vaultType;
     mapping(address => bool) public approvedVaultsOwner;
-    mapping(address => string) public tags;
     mapping(address => bool) public isVaultEndorsed;
     mapping(address => bool) public vaultEndorsers;
 
-    event NewRelease(
-        uint256 indexed releaseId,
-        address template,
-        string apiVersion
-    );
     event NewVault(
         address indexed token,
         uint256 indexed vaultId,
