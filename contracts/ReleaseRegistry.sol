@@ -16,8 +16,6 @@ contract ReleaseRegistry is Ownable {
 
     event NewClone(address indexed vault);
 
-    event Clone(address vault);
-
     /**
     @notice Returns the api version of the latest release.
     @dev Throws if no releases are registered yet.
