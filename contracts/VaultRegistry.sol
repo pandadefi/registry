@@ -25,6 +25,7 @@ contract VaultRegistry is Ownable {
     address immutable LEGACY_REGISTRY;
 
     address public releaseRegistry;
+    // token => vaults
     mapping(address => address[]) public vaults;
     address[] public tokens;
     mapping(address => bool) public isRegistered;
@@ -53,9 +54,9 @@ contract VaultRegistry is Ownable {
     error VaultAlreadyEndorsed(address vault, uint256 vaultType);
     error InvalidVaultType();
 
-    constructor(address _releaseRegistry, address _legacyVault) {
+    constructor(address _releaseRegistry, address _legacyRegistry) {
         releaseRegistry = _releaseRegistry;
-        LEGACY_REGISTRY = _legacyVault;
+        LEGACY_REGISTRY = _legacyRegistry;
         emit ReleaseRegistryUpdated(_releaseRegistry);
     }
 
@@ -122,7 +123,6 @@ contract VaultRegistry is Ownable {
      @dev Return zero if no vault is associated with the token
      @param _token The token address to find the latest vault for.
      @return The address of the latest vault for the given token.
-     NOTE: Throws if there has not been a deployed vault yet for this token
      */
     function latestVault(address _token) external view returns (address) {
         return _latestVault(_token);
@@ -194,6 +194,7 @@ contract VaultRegistry is Ownable {
          Emits a `NewVault` event.
      @param _vault The vault that will be endorsed by the Registry.
      @param _releaseDelta Specify the number of releases prior to the latest to use as a target. DEFAULT_TYPE is latest.
+     @param _type Vault type
     */
     function endorseVault(
         address _vault,
@@ -258,8 +259,7 @@ contract VaultRegistry is Ownable {
     /**
     @notice
         Create a new vault for the given token using the latest release in the registry,
-        as a simple "forwarder-style" delegatecall proxy to the latest release. Also adds
-        the new vault to the list of "endorsed" vaults for that token.
+        as a simple "forwarder-style" delegatecall proxy to the latest release.
     @dev
         `governance` is set in the new vault as `governance`, with no ability to override.
         Throws if caller isn't `governance`.
@@ -272,6 +272,7 @@ contract VaultRegistry is Ownable {
     @param _name Specify a custom Vault name. Set to empty string for DEFAULT_TYPE choice.
     @param _symbol Specify a custom Vault symbol name. Set to empty string for DEFAULT_TYPE choice.
     @param _releaseDelta Specify the number of releases prior to the latest to use as a target. DEFAULT_TYPE is latest.
+    @param _type Vault type
     @return The address of the newly-deployed vault
      */
     function newVault(
