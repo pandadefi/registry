@@ -107,8 +107,7 @@ contract ReleaseRegistry is Ownable {
     /**
     @notice
         Create a new vault for the given token using the latest release in the registry,
-        as a simple "forwarder-style" delegatecall proxy to the latest release. Also adds
-        the new vault to the list of "endorsed" vaults for that token.
+        as a simple "forwarder-style" delegatecall proxy to the latest release.
     @dev
         Throws if no releases are registered yet.
     @param _token The token that may be deposited into the new Vault.
