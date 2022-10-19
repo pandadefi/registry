@@ -1,9 +1,7 @@
 # @version 0.3.7
 
 interface Vault:
-    def token() -> address: view
     def apiVersion() -> String[28]: view
-    def governance() -> address: view
     def initialize(
         token: address,
         governance: address,
@@ -13,9 +11,16 @@ interface Vault:
         guardian: address,
     ): nonpayable
 
-governance: public(address)
 numReleases: public(uint256)
 releases: public(HashMap[uint256, address])
+governance: public(address)
+pendingGovernance: public(address)
+
+event UpdateGovernance:
+    governance: address # New active governance
+
+event NewPendingGovernance:
+    pendingGovernance: indexed(address)
 
 event NewRelease:
     release_id: indexed(uint256)
@@ -25,6 +30,9 @@ event NewRelease:
 event NewClone:
     vault: indexed(address)
 
+@external
+def __init__():
+    self.governance = msg.sender
 
 @view
 @external
@@ -124,3 +132,40 @@ def newVault(
     vault: address = self._newProxyVault(token, governance, rewards, guardian, name, symbol, releaseTarget)
 
     return vault
+
+
+# 2-phase commit for a change in governance
+@external
+def setGovernance(governance: address):
+    """
+    @notice
+        Nominate a new address to use as governance.
+
+        The change does not go into effect immediately. This function sets a
+        pending change, and the governance address is not updated until
+        the proposed governance address has accepted the responsibility.
+
+        This may only be called by the current governance address.
+    @param governance The address requested to take over Vault governance.
+    """
+    assert msg.sender == self.governance
+    log NewPendingGovernance(governance)
+    self.pendingGovernance = governance
+
+
+@external
+def acceptGovernance():
+    """
+    @notice
+        Once a new governance address has been proposed using setGovernance(),
+        this function may be called by the proposed address to accept the
+        responsibility of taking over governance for this contract.
+
+        This may only be called by the proposed governance address.
+    @dev
+        setGovernance() should be called by the existing governance address,
+        prior to calling this function.
+    """
+    assert msg.sender == self.pendingGovernance
+    self.governance = msg.sender
+    log UpdateGovernance(msg.sender)
