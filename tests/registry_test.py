@@ -92,5 +92,9 @@ def test_create_different_types(vault_registry, token, gov, project):
         )
 
 
+def test_fetch_existing_dai_vault(vault_registry, legacy_registry, dai):
+    assert vault_registry.latestVault(dai) == legacy_registry.latestVault(dai)
+
+
 def test_do_not_throw_if_vault_do_not_exists(vault_registry, token):
     assert vault_registry.latestVault(token) == ZERO_ADDRESS
