@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Proxy.sol";
 
 import "./IVault.sol";
 
@@ -144,22 +145,6 @@ contract ReleaseRegistry is Ownable {
     }
 
     function _clone(address _target) internal returns (address _newVault) {
-        // Copied from https://github.com/optionality/clone-factory/blob/master/contracts/CloneFactory.sol
-        bytes20 addressBytes = bytes20(address(_target));
-
-        assembly {
-            // EIP-1167 bytecode
-            let clone_code := mload(0x40)
-            mstore(
-                clone_code,
-                0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000
-            )
-            mstore(add(clone_code, 0x14), addressBytes)
-            mstore(
-                add(clone_code, 0x28),
-                0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000
-            )
-            _newVault := create(0, clone_code, 0x37)
-        }
+        _newVault = address(new Proxy(_target));
     }
 }

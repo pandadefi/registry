@@ -7,3 +7,6 @@ reports/
 contracts/.cache
 .build/
 node_modules/
+yarn-error.log
+artifacts-zk
+cache-zk

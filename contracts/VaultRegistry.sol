@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IVault.sol";
@@ -22,7 +22,6 @@ interface IReleaseRegistry {
 
 contract VaultRegistry is Ownable {
     uint256 constant DEFAULT_TYPE = 1;
-    address immutable LEGACY_REGISTRY;
 
     address public releaseRegistry;
     // token => vaults
@@ -54,9 +53,8 @@ contract VaultRegistry is Ownable {
     error VaultAlreadyEndorsed(address vault, uint256 vaultType);
     error InvalidVaultType();
 
-    constructor(address _releaseRegistry, address _legacyRegistry) {
+    constructor(address _releaseRegistry) {
         releaseRegistry = _releaseRegistry;
-        LEGACY_REGISTRY = _legacyRegistry;
         emit ReleaseRegistryUpdated(_releaseRegistry);
     }
 
@@ -75,7 +73,7 @@ contract VaultRegistry is Ownable {
     function _latestVault(address _token) internal view returns (address) {
         uint256 length = _numVaults(_token);
         if (length == 0) {
-            return _fetchFromLegacy(_token);
+            return address(0);
         }
         return vaults[_token][length - 1];
     }
@@ -101,19 +99,6 @@ contract VaultRegistry is Ownable {
             unchecked {
                 i--;
             }
-        }
-        return address(0);
-    }
-
-    function _fetchFromLegacy(address _token) internal view returns (address) {
-        bytes memory data = abi.encodeWithSignature(
-            "latestVault(address)",
-            _token
-        );
-        (bool success, bytes memory returnBytes) = address(LEGACY_REGISTRY)
-            .staticcall(data);
-        if (success) {
-            return abi.decode(returnBytes, (address));
         }
         return address(0);
     }
