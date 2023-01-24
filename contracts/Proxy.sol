@@ -6,7 +6,7 @@ contract Proxy {
         implementation = _implementation;
     }
 
-    receive() external payable virtual {
+    fallback() external payable {
         address _implementation = implementation;
         assembly {
             calldatacopy(0, 0, calldatasize())
